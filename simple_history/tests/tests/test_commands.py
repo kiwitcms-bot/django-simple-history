@@ -70,6 +70,28 @@ class TestPopulateHistory(TestCase):
         )
         self.assertEqual(Poll.history.all().count(), 1)
 
+    def test_auto_populate_skips_empty_model(self):
+        out = StringIO()
+        with replace_registry({"poll": Poll}):
+            self.assertEqual(Poll.objects.all().count(), 0)
+            self.assertEqual(Poll.history.all().count(), 0)
+
+            management.call_command(
+                self.command_name, auto=True, stdout=out, stderr=StringIO()
+            )
+
+            self.assertNotIn(
+                populate_history.Command.START_SAVING_FOR_MODEL.format(model=Poll),
+                out.getvalue(),
+            )
+            self.assertNotIn(
+                populate_history.Command.DONE_SAVING_FOR_MODEL.format(model=Poll),
+                out.getvalue(),
+            )
+
+            self.assertEqual(Poll.objects.all().count(), 0)
+            self.assertEqual(Poll.history.all().count(), 0)
+
     def test_populate_with_custom_batch_size(self):
         Poll.objects.create(question="Will this populate?", pub_date=datetime.now())
         Poll.history.all().delete()
@@ -171,7 +193,7 @@ class TestPopulateHistory(TestCase):
 
     def test_stdout_printed_when_verbosity_is_not_specified(self):
         out = StringIO()
-        Poll.objects.create(question="Question 1", pub_date=datetime.now())
+        Poll.objects.bulk_create([Poll(question="Question 1", pub_date=datetime.now())])
 
         management.call_command(
             self.command_name, auto=True, batchsize=3, stdout=out, stderr=StringIO()

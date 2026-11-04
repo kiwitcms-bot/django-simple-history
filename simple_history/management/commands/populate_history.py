@@ -162,6 +162,8 @@ class Command(BaseCommand):
                     )
                 )
                 continue
+            if not model._default_manager.exists():
+                continue
             if self.verbosity >= 1:
                 self.stdout.write(self.START_SAVING_FOR_MODEL.format(model=model))
             self._bulk_history_create(model, batch_size)
